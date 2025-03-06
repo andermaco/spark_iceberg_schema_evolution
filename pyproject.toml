@@ -7,13 +7,16 @@ name = "schema_evolution"
 version = "0.1.0"
 description = "A PySpark project for schema evolution"
 authors = [
-    {name = "Ander Maco", email = "andermaco@gmail.com"},
+    {name = "Ander", email = "andermaco@gmail.com"},
 ]
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.10"
 dependencies = [
-    "pyspark>=3.0.0",
-    "pandas>=1.0.0",
+    "pyspark>=3.3.0",
+    "pandas>=1.3.2",
+    "boto3>=1.36.3",
+    "awswrangler>=3.11.0",
+    "faker>=30.8.1"
 ]
 
 [project.optional-dependencies]

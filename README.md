@@ -1,17 +1,68 @@
 # Spark Schema Evolution Demo
 
-This project demonstrates schema evolution handling in Apache Spark, showing how to manage and process data with changing schemas over time.
+This project demonstrates schema evolution handling in Apache Spark, AWS Glue, AWS s3, and Iceberg, showing how to manage and process data with changing schemas over time.
 
-## Setup
+## Overview
 
-### Prerequisites
-- Python 3.13+
-- Apache Spark
-- pip
+The application processes CSV files containing customer data, handles schema evolution, and writes the data to an Apache Iceberg table in AWS Glue catalog.
 
-### Installation
+## Features
+
+- CSV file processing with schema inference
+- Schema evolution support
+- Column type alignment
+- Timestamp handling
+- Partition management
+- AWS Glue catalog integration
+- S3 storage with Iceberg format
+
+## Key Components
+
+- **AWSConfig**: Handles AWS configuration and validation
+- **Utils**: Contains utility functions for:
+  - Spark session management
+  - AWS Glue catalog configuration
+  - Schema comparison and alignment
+  - Data type normalization
+  - S3 writing with Iceberg format
+
+## Notes
+
+- The application uses Apache Iceberg for table format
+- Data is stored in Parquet format with ZSTD compression
+- Schema evolution is enabled by default
+- Partitioning is done by month(created_at)
+- Temporary files are automatically cleaned up  
+
+## Prerequisites
+
+- Python 3.10+
+- Apache Spark 3.3+
+- AWS Account with appropriate permissions
+- Conda for environment management
+
+## Required Dependencies
+
+- python=3.10
+- pyspark~=3.3.0
+- pandas~=1.3.2
+- boto3~=1.36.3
+- awswrangler~=3.11.0
+- faker~=30.8.1
+
+## The following JAR files need to be placed in `deploy/jar_libraries/`:
+- iceberg-spark-runtime-3.3_2.12-1.6.1.jar
+- bundle-2.17.161.jar
+- url-connection-client-2.17.161.jar
+
+
+## Installation
 
 1. Install the package in development mode with dev dependencies:
+    ```bash
+    conda env create -f conda_env.yml
+    ```
+    or update the environment:
     ```bash
     conda env update -f conda_env.yml
     ```
@@ -26,23 +77,53 @@ This project demonstrates schema evolution handling in Apache Spark, showing how
     pip install -e ".[dev]"
     ```
 
-4. [Optional] If you are using different python versions at Driver VS Executors, configure your Spark environment:
-    ```bash
-    export SPARK_HOME=/path/to/your/spark
-    export PYTHONPATH=$SPARK_HOME/python:$PYTHONPATH
+4. I'm using a launch.json file for running or debugging the job in VSCode. Configure AWS credentials and settings in `.vscode/launch.json`:
+
+    ```json
+    {
+        "AWS_S3_PATH": "s3://your-bucket/database/table",
+        "GLUE_DATABASE": "your_database",
+        "GLUE_TABLE": "your_table",
+        "AWS_IAM_ROLE": "arn:aws:iam::account:role/role_name",
+        "WORKGROUP": "your_workgroup",
+        "WORKGROUP_S3_PATH": "s3://your-workgroup-bucket",
+        "AWS_REGION": "your-region"
+    }
     ```
+    
+    [Optional] If you are using different python versions at Driver VS Executors, configure your Spark environment:
+    
+    ```json
+    "env": {                
+            ...
+            "PYSPARK_PYTHON": "$HOME.conda/envs/schema_evolution/bin/python",
+            ...
+    }
+    ```
+
 
 ## Usage
 
-### Running the Demo
+1. Place your CSV files in `data/raw/` directory. There are some example files in the directory. You can use them to test the job, even you can add more files to the directory using the faker script
+    ```python
+    python src/utils/fake_data.py
+    ```
 
-Execute the example job to see schema evolution in action:
+2. Configure AWS settings in `.vscode/launch.json`
 
-```bash
-python -m src.jobs.example_job
-```
+3. Now you can run the job in two ways:
+    - From VS Code:
+        - Press F5 or
+        - Click the "Run and Debug" sidebar icon (Ctrl+Shift+D)
+        - Select "Schema Evolution Job" from the dropdown
+        - Click the green play button or press F5
+    - Or use the VS Code Command Palette:
+        - Press Ctrl+Shift+P
+        - Type "Debug: Select and Start Debugging"
+        - Select "Schema Evolution Job"
 
-### Running Tests
+
+## Running Tests
 Run the test suite:
 ```bash
 pytest
@@ -53,12 +134,6 @@ For test coverage report:
 pytest --cov=src
 ```
 
-
-## Features
-- Demonstrates handling of schema changes in Parquet files
-- Shows how to merge different schema versions
-- Includes error handling and schema validation
-- Provides utility functions for Spark operations
 
 ## Contributing
 1. Fork the repository

@@ -68,5 +68,6 @@ def generate_random_csv(file_index, num_records=1):
 
 if __name__ == "__main__":
     # Generate multiple CSVs with different structures
-    for i in range(1, 21):  # Creating customers-5.csv to customers-20.csv
+    for i in range(21, 22):  # Creating customers-1
+        .csv to customers-20.csv
         generate_random_csv(i, num_records=random.randint(1, 10))
