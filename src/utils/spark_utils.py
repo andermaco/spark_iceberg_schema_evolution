@@ -44,7 +44,6 @@ class Utils():
         spark.conf.set("spark.sql.catalog.AwsGlueCatalog.io-impl",
                        "org.apache.iceberg.aws.s3.S3FileIO")
         spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
-        
 
     @staticmethod
     def compare_schemas(schema1: StructType, schema2: StructType) -> Tuple[Set[str], Set[str], Dict[str, Tuple[DataType, DataType]]]:
@@ -179,7 +178,6 @@ class Utils():
                 'vacuum_min_snapshots_to_keep'='5'
             )
         """)
-        
 
     @staticmethod
     def get_glue_iceberg_schema(spark: SparkSession, glue_db: str, glue_table: str) -> Tuple[StructType, DataFrame]:
