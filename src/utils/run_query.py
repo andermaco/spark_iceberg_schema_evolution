@@ -64,5 +64,5 @@ def run(
             return "ATHENA_QUERY_ERROR"
     except Exception as e:
         print("Error while running Athena query: "+str(e) +
-                     f"\nQueryID:{queryid}")
+              f"\nQueryID:{queryid}")
         return "ATHENA_QUERY_ERROR"

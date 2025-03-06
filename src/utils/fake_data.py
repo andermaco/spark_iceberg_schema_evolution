@@ -6,29 +6,32 @@ from faker import Faker
 fake = Faker()
 
 # Mandatory columns
-MANDATORY_COLUMNS = ["Index", "Customer Id", "First Name", "Last Name", "Subscription Date"]
+MANDATORY_COLUMNS = ["Index", "Customer Id",
+                     "First Name", "Last Name", "Subscription Date"]
 
 # Possible additional columns
 OPTIONAL_COLUMNS = [
     "Company", "City", "Country", "Phone", "Email", "Industry", "Revenue", "Zip Code"
 ]
 
+
 def generate_random_csv(file_index, num_records=1):
     """
     Generate a CSV file with random customer data, adding new fields dynamically.
-    
+
     :param file_index: The index for the CSV filename.
     :param num_records: Number of records to generate in the file.
     """
     # Randomly choose how many extra fields to include
-    selected_optional_columns = random.sample(OPTIONAL_COLUMNS, k=random.randint(1, len(OPTIONAL_COLUMNS)))
+    selected_optional_columns = random.sample(
+        OPTIONAL_COLUMNS, k=random.randint(1, len(OPTIONAL_COLUMNS)))
 
     # Final column list
     all_columns = MANDATORY_COLUMNS + selected_optional_columns
 
     # File name
     filename = f"data/raw/customers-{file_index}.csv"
-    
+
     # Generate data
     with open(filename, mode="w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=all_columns)
@@ -42,7 +45,7 @@ def generate_random_csv(file_index, num_records=1):
                 "Last Name": fake.last_name(),
                 "Subscription Date": fake.date_between(start_date="-5y", end_date="today").strftime("%Y-%m-%d"),
             }
-            
+
             # Fill optional fields dynamically
             for col in selected_optional_columns:
                 if col == "Company":
@@ -66,8 +69,8 @@ def generate_random_csv(file_index, num_records=1):
 
     print(f"Generated: {filename}")
 
+
 if __name__ == "__main__":
     # Generate multiple CSVs with different structures
-    for i in range(21, 22):  # Creating customers-1
-        .csv to customers-20.csv
+    for i in range(21, 22):  # Creating customers-1.csv to customers-20.csv
         generate_random_csv(i, num_records=random.randint(1, 10))

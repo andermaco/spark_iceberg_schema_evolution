@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class AWSConfig:
     """AWS configuration settings."""
@@ -28,5 +29,6 @@ class AWSConfig:
                 f"Missing required AWS configuration: {', '.join(missing)}"
             )
 
+
 # Create a singleton instance
-aws_config = AWSConfig() 
+aws_config = AWSConfig()
