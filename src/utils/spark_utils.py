@@ -1,15 +1,13 @@
 # from narwhals import DataFrame
-import gc
 from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.types import StructType, DataType, LongType, StringType, ByteType, ShortType, IntegerType, FloatType, DoubleType, DecimalType
+from pyspark.sql.types import StructType, DataType, StringType
 from pyspark.sql.functions import lit
 from dataclasses import dataclass
-from typing import List, Tuple, Set, Dict
-import awswrangler as wr
-import boto3
-import pandas as pd
+from typing import Tuple, Set, Dict
 from pyspark.sql.types import TimestampType
 from src.config.settings import AWSConfig
+import awswrangler as wr
+import boto3
 
 
 @dataclass
