@@ -1,8 +1,0 @@
-pyspark
-pandas
-avro
-jupyter
-#awswrangler>=3.0.0  # Or your version
-#pandas>=1.5.0
-#boto3
-#pyarrow

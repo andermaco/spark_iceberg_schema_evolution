@@ -5,6 +5,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class AWSConfig:
     """AWS configuration settings."""
+    print(os.environ.get("AWS_S3_PATH"))
     s3_path: str = os.getenv("AWS_S3_PATH")
     glue_database: str = os.getenv("GLUE_DATABASE")
     glue_table: str = os.getenv("GLUE_TABLE")
@@ -31,4 +32,4 @@ class AWSConfig:
 
 
 # Create a singleton instance
-aws_config = AWSConfig()
+# aws_config = AWSConfig()

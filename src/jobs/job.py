@@ -1,17 +1,10 @@
 import datetime
-import os
-import sys
-from src.utils import run_query
 from src.config.settings import AWSConfig
 from src.utils.spark_utils import Utils
-from pyspark.sql import SparkSession
-from pyspark.sql.types import DateType, StringType, TimestampType, IntegerType
 from pyspark.sql.functions import date_format, to_timestamp, lit
 from pyspark.storagelevel import StorageLevel
 from functools import reduce
-import uuid
-import pandas as pd
-import random
+
 
 if __name__ == "__main__":
 
@@ -29,12 +22,11 @@ if __name__ == "__main__":
 
     # csv_list = ["data/raw/customers-2.csv"]
     csv_list = []
-    for i in range(1, 21):
+    for i in range(16, 21):
         print(f"processingdata/raw/customers-{i}.csv")
         csv_list.append(f"data/raw/customers-{i}.csv")
 
-    try:
-
+    try:      
         #########################################
         # Read sorce CSV files and process them #
         #########################################
