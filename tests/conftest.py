@@ -1,7 +1,6 @@
 import pytest
 from pyspark.sql import SparkSession
 import os
-import sys
 
 
 @pytest.fixture(scope="session", autouse=True)
