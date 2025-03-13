@@ -82,20 +82,20 @@ The application processes CSV files containing customer data, handles schema evo
     ```json
     "env": {                                
                 // AWS settings
-                "AWS_S3_PATH": "s3://bd-datawarehouse/customers_db/customers_table",
+                "AWS_S3_PATH": "s3://<YOUR_BUCKET>/customers_db/customers_table",
                 "GLUE_DATABASE": "customers_db",
                 "GLUE_TABLE": "customers_table",
-                "AWS_IAM_ROLE": "arn:aws:iam::216989113396:role/role_glue_tq",
-                "WORKGROUP": "bd_test_tq_wg",
-                "WORKGROUP_S3_PATH": "s3://bd-test-tq-wg",
-                "AWS_REGION": "eu-west-1",
+                "AWS_IAM_ROLE": "arn:aws:iam::<YOUR_AWS_ACCOUNT_ID>:role/<YOUR_AWS_ROLE>",
+                "WORKGROUP": "<YOUR_WORKGROUP>",
+                "WORKGROUP_S3_PATH": "s3://<YOUR_BUCKET>",
+                "AWS_REGION": "<YOUR_AWS_REGION>",
 
                 // PySpark & Java Environment variables
                 "PYSPARK_SUBMIT_ARGS": "--jars deploy/jar_libraries/iceberg-spark-runtime-3.3_2.12-1.6.1.jar,deploy/jar_libraries/bundle-2.17.161.jar,deploy/jar_libraries/url-connection-client-2.17.161.jar pyspark-shell",
                 "JAVA_HOME": "/usr/lib/jvm/java-11-openjdk",
                 "SPARK_HOME": "/opt/spark",
-                "PYSPARK_PYTHON": "/home/cammac/.conda/envs/schema_evolution/bin/python",
-                "PYSPARK_DRIVER_PYTHON": "/home/cammac/.conda/envs/schema_evolution/bin/python"
+                "PYSPARK_PYTHON": "<YOUR_PYTHON_PATH>",
+                "PYSPARK_DRIVER_PYTHON": "<YOUR_PYTHON_PATH>"
             }
     ```
     
