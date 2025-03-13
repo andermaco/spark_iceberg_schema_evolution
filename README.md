@@ -80,7 +80,16 @@ The application processes CSV files containing customer data, handles schema evo
 4. I'm using a launch.json file for running or debugging the job in VSCode. Configure AWS credentials and settings in `.vscode/launch.json`:
 
     ```json
-    "env": {                                
+    {
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Schema Evolution Job",
+            "type": "debugpy",
+            "request": "launch",            
+            "program": "${workspaceFolder}/src/jobs/job.py",
+            "console": "integratedTerminal",
+            "env": {                                
                 // AWS settings
                 "AWS_S3_PATH": "s3://<YOUR_BUCKET>/customers_db/customers_table",
                 "GLUE_DATABASE": "customers_db",
@@ -97,6 +106,17 @@ The application processes CSV files containing customer data, handles schema evo
                 "PYSPARK_PYTHON": "<YOUR_PYTHON_PATH>",
                 "PYSPARK_DRIVER_PYTHON": "<YOUR_PYTHON_PATH>"
             }
+        },
+        {
+            "name": "Fake Job",
+            "type": "debugpy",
+            "request": "launch",            
+            "program": "${workspaceFolder}/src/utils/fake_data.py",
+            "console": "integratedTerminal",
+
+        }
+    ]
+    }
     ```
     
     [Optional] If you are using different python versions at Driver VS Executors, configure your Spark environment:
