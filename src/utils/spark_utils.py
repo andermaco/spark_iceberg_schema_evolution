@@ -81,11 +81,6 @@ class Utils():
 
         # Add fields from the target schema
         for target_field in target_fields:
-            
-            if target_field.name == "newsletter_subscription":
-                print("lk")
-            
-            
             if target_field.name in new_df.columns:
                 # If the column exists in the new DataFrame, use its existing type
                 aligned_fields.append(new_df[target_field.name].cast(
