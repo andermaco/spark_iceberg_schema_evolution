@@ -112,10 +112,23 @@ The application processes CSV files containing customer data, handles schema evo
 
 ## Usage
 
-1. Place your CSV files in `data/raw/` directory. There are some example files in the directory. You can use them to test the job, even you can add more files to the directory using the faker script
-    ```python
-    python src/utils/fake_data.py
-    ```
+For testing purposes, you can generate fake data using the src/utils/fake_data.py script or use you own csv files:
+
+1. Place your CSV files in `data/raw/` directory, or **you can generate some example files using the src/utils/fake_data.py script**, you can use them to test the job, even you can add more files to the directory later on to test the schema evolution, take care, **the job will process all the files in the directory**.
+
+
+    - Generate files 1-20 (default)
+        ```bash    
+        python src/utils/fake_data.py
+        ```
+    - Generate specific range (e.g., files 16-20)
+        ```bash
+        python src/utils/fake_data.py --start 16 --end 20
+        ```
+    - Specify max records per file
+        ```bash
+        python src/utils/fake_data.py --start 16 --end 20 --records 5
+        ```  
 
 2. Configure AWS settings in `.vscode/launch.json`
 
