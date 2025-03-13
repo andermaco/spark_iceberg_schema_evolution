@@ -32,7 +32,7 @@ ENV/
 
 # IDE
 .idea/
-.vscode/
+# .vscode/
 *.swp
 *.swo
 .project
@@ -43,6 +43,7 @@ ENV/
 spark-warehouse/
 metastore_db/
 derby.log
+edata/
 
 # Jupyter Notebook
 .ipynb_checkpoints
