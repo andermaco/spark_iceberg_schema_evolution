@@ -1,6 +1,6 @@
 # Spark Schema Evolution Demo
 
-This project demonstrates schema evolution handling in Apache Spark, AWS Glue, AWS s3, and Iceberg, showing how to manage and process data with changing schemas over time.
+This project shows using csv files with different schemas, as data source, the schema evolution handling in Apache Spark, AWS Glue, AWS s3, and Iceberg, showing how to manage and process data with changing schemas over time.
 
 ## Overview
 
