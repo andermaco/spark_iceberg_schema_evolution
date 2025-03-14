@@ -3,7 +3,7 @@ import random
 import uuid
 import argparse
 from faker import Faker
-import re
+
 
 fake = Faker()
 
@@ -31,11 +31,6 @@ OPTIONAL_COLUMNS = [
     "Sensor Data", "Temperature", "Humidity", "Pressure", "Acceleration",
 ]
 
-def normalize_text(text):
-    """
-    Normalize text by replacing multiple spaces with a single space and removing leading/trailing spaces.
-    """
-    return re.sub(r'\s+', ' ', text).strip()
 
 def generate_random_csv(file_index, num_records=1):
     """
@@ -71,29 +66,29 @@ def generate_random_csv(file_index, num_records=1):
             # Fill optional fields dynamically     
             for col in selected_optional_columns:
                 if col == "Company":
-                    row[col] = normalize_text(fake.company())
+                    row[col] = fake.company()
                 elif col == "City":
-                    row[col] = normalize_text(fake.city())
+                    row[col] = fake.city()
                 elif col == "Country":
-                    row[col] = normalize_text(fake.country())
+                    row[col] = fake.country()
                 elif col == "Phone":
-                    row[col] = normalize_text(fake.phone_number())
+                    row[col] = fake.phone_number()
                 elif col == "Email":
-                    row[col] = normalize_text(fake.email())
+                    row[col] = fake.email()
                 elif col == "Industry":
-                    row[col] = normalize_text(fake.job())
+                    row[col] = fake.job()
                 elif col == "Revenue":
                     row[col] = random.randint(100000, 10000000)
                 elif col == "Zip Code":
-                    row[col] = normalize_text(fake.zipcode())
+                    row[col] = fake.zipcode()
                 elif col == "Address":
-                    row[col] = normalize_text(fake.address())
+                    row[col] = fake.address()
                 elif col == "State":
-                    row[col] = normalize_text(fake.state())
+                    row[col] = fake.state()
                 elif col == "Website":
-                    row[col] = normalize_text(fake.url())
+                    row[col] = fake.url()
                 elif col == "Job Title":
-                    row[col] = normalize_text(fake.job())
+                    row[col] = fake.job()
                 elif col == "Department":
                     row[col] = fake.random_element(elements=("Sales", "Marketing", "Engineering", "Support"))
                 elif col == "Product Category":
@@ -103,9 +98,9 @@ def generate_random_csv(file_index, num_records=1):
                 elif col == "Order ID":
                     row[col] = fake.uuid4()
                 elif col == "Shipping Address":
-                    row[col] = normalize_text(fake.address())
+                    row[col] = fake.address()
                 elif col == "Billing Address":
-                    row[col] = normalize_text(fake.address())
+                    row[col] = fake.address()
                 elif col == "Credit Card Number":
                     row[col] = fake.credit_card_number()  # Be extremely careful with sensitive data
                 elif col == "Social Security Number":
@@ -113,17 +108,17 @@ def generate_random_csv(file_index, num_records=1):
                 elif col == "IP Address":
                     row[col] = fake.ipv4()
                 elif col == "User Agent":
-                    row[col] = normalize_text(fake.user_agent())
+                    row[col] = fake.user_agent()
                 elif col == "Referral Source":
                     row[col] = fake.random_element(elements=("Google", "Facebook", "Direct", "Referral"))
                 elif col == "Language":
                     row[col] = fake.language_code()
                 elif col == "Time Zone":
-                    row[col] = normalize_text(fake.timezone())
+                    row[col] = fake.timezone()
                 elif col == "Notes":
-                    row[col] = normalize_text(fake.text())
+                    row[col] = fake.text()
                 elif col == "Comments":
-                    row[col] = normalize_text(fake.text())
+                    row[col] = fake.text()
                 elif col == "Loyalty Points":
                     row[col] = random.randint(0, 1000)
                 elif col == "Membership Level":
@@ -151,7 +146,7 @@ def generate_random_csv(file_index, num_records=1):
                 elif col == "Education Level":
                     row[col] = fake.random_element(elements=("High School", "Bachelor's", "Master's", "PhD"))
                 elif col == "Occupation":
-                    row[col] = normalize_text(fake.job())
+                    row[col] = fake.job()
                 elif col == "Hobbies":
                     row[col] = fake.random_element(elements=("Reading", "Hiking", "Gaming", "Cooking"))
                 elif col == "Interests":
@@ -175,11 +170,11 @@ def generate_random_csv(file_index, num_records=1):
                 elif col == "Campaign ID":
                     row[col] = fake.uuid4()
                 elif col == "Campaign Name":
-                    row[col] = normalize_text(fake.catch_phrase())
+                    row[col] = fake.catch_phrase()
                 elif col == "Ad Group":
-                    row[col] = normalize_text(fake.word())
+                    row[col] = fake.word()
                 elif col == "Keyword":
-                    row[col] = normalize_text(fake.word())
+                    row[col] = fake.word()
                 elif col == "Click ID":
                     row[col] = fake.uuid4()
                 elif col == "Page Views":
