@@ -8,6 +8,7 @@ from pyspark.sql.types import TimestampType
 from src.config.settings import AWSConfig
 import awswrangler as wr
 import boto3
+import pandas as pd
 
 
 @dataclass
@@ -42,6 +43,23 @@ class Utils():
         spark.conf.set("spark.sql.catalog.AwsGlueCatalog.io-impl",
                        "org.apache.iceberg.aws.s3.S3FileIO")
         spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
+        
+    @staticmethod
+    def get_aws_session(aws_config: AWSConfig):
+                # Create session with role assumption
+        sts_client = boto3.client('sts')
+        assumed_role = sts_client.assume_role(
+            RoleArn=aws_config.iam_role,
+            RoleSessionName='WriteToS3GlueSession'
+        )
+
+        # Create boto3 session with temporary credentials
+        return boto3.Session(
+            aws_access_key_id=assumed_role['Credentials']['AccessKeyId'],
+            aws_secret_access_key=assumed_role['Credentials']['SecretAccessKey'],
+            aws_session_token=assumed_role['Credentials']['SessionToken']
+        )    
+        
 
     @staticmethod
     def compare_schemas(schema1: StructType, schema2: StructType) -> Tuple[Set[str], Set[str], Dict[str, Tuple[DataType, DataType]]]:
@@ -98,7 +116,7 @@ class Utils():
         return new_df.select(*aligned_fields)
 
     @staticmethod
-    def write_to_s3_glue(df: DataFrame, aws_config: AWSConfig, partition_cols: list) -> None:
+    def write_to_s3_glue(pd_df: pd.DataFrame, aws_config: AWSConfig, partition_cols: list) -> None:
         """
         Write DataFrame to S3 and create/update Glue catalog table using specified IAM role
         Args:
@@ -119,13 +137,11 @@ class Utils():
             aws_secret_access_key=assumed_role['Credentials']['SecretAccessKey'],
             aws_session_token=assumed_role['Credentials']['SessionToken']
         )
-
-        # Convert to pandas and handle schema evolution
-        pandas_df = df.toPandas()
+        
 
         # Write to table using awswrangler
         wr.athena.to_iceberg(
-            df=pandas_df,
+            df=pd_df,
             database=aws_config.glue_database,
             table=aws_config.glue_table,
             temp_path="s3://bd-test-tq-wg/temp/",
@@ -204,25 +220,91 @@ class Utils():
         try:
             df = spark.read.format("iceberg").load(
                 f"AwsGlueCatalog.{glue_db}.{glue_table}")
-            return df.schema, df
+            return df.schema
         except Exception as e:
             print(f"Error retrieving schema: {e}")
-            return None, None  # Return None if the table doesn't exist or there's an error
+            return None # Return None if the table doesn't exist or there's an error
+    
+    
+    # Mapping Athena/Glue data types to Pandas data types
+    ATHENA_TO_PANDAS_TYPES = {
+        "int": "Int64",
+        "integer": "Int64",
+        "bigint": "Int64",
+        "smallint": "Int64",
+        "tinyint": "Int64",
+        "double": "float64",
+        "float": "float64",
+        "decimal": "float64",
+        "string": "string",
+        "char": "string",
+        "varchar": "string",
+        "boolean": "bool",
+        "timestamp": "datetime64[ns]",
+        "date": "datetime64[ns]",
+        "binary": "bytes",
+    }
+
+    def get_athena_table_schema(aws_session: boto3.Session, database_name: str, table_name: str):
+        """Fetch schema of an Athena Iceberg table from AWS Glue and convert to Pandas-compatible types."""
+        try:
+            response = aws_session.client("glue").get_table(DatabaseName=database_name, Name=table_name)
+            columns = response["Table"]["StorageDescriptor"]["Columns"]
+
+            schema = {
+                col["Name"]: Utils.ATHENA_TO_PANDAS_TYPES.get(col["Type"], "object")  # Default to object if type is unknown
+                for col in columns
+            }
+            return schema
+        except Exception as e:
+            print(f"Error getting schema: {e}")
+            return None
+    
+    
 
     @staticmethod
-    def align_column_types(df: DataFrame, target_schema: StructType) -> DataFrame:
+    def align_column_types(df: pd.DataFrame, target_schema: StructType) -> pd.DataFrame:
         """
         Aligns column types to match target schema.
         Args:
-            df: The DataFrame to align.
+            df: The Pandas DataFrame to align.
             target_schema: The target schema.
         Returns:
-            A new DataFrame with the aligned column types.
+            A new Pandas DataFrame with the aligned column types.
         """
         for field in target_schema.fields:
             if field.name in df.columns:
-                df = df.withColumn(
-                    field.name, df[field.name].cast(field.dataType))
+                df[field.name] = df[field.name].astype(field.dataType)
+        return df
+    
+    @staticmethod
+    def align_column_types(df: pd.DataFrame, target_schema: dict) -> pd.DataFrame:
+        """
+        Aligns column types to match target schema.
+        Args:
+            df: The Pandas DataFrame to align.
+            target_schema: The target schema.
+        Returns:
+            A new Pandas DataFrame with the aligned column types.
+        """
+        for field in target_schema:
+            if field in df.columns:
+            #     # df[field] = df[field].astype(target_schema[field])
+            #     # if pd.api.types.is_datetime64_dtype(df[field]) and hasattr(df[field].dtype, 'tz'):
+            #     if pd.api.types.is_datetime64_any_dtype(df[field]):
+            #         if pd.api.types.is_datetime64_ns_dtype(df[field]):
+            #             continue
+            #         # if target_schema[field] == 'datetime64[ns]' and df[field].dtype is not 'datetime64[ns]':
+            #             # Convert timezone-aware to timezone-naive
+            #             # df[field] = df[field].dt.tz_convert('UTC').dt.tz_localize(None)
+            #             df[field] = df[field].astype(target_schema[field]).stz_convert('UTC').tz_localize(None)
+            #     else:
+            #         try:
+            #             # For other types, use regular astype
+            #             df[field] = df[field].astype(target_schema[field])
+            #         except TypeError as e:
+            #             print(f"Warning: Could not convert {field} to {target_schema[field]}: {e}")
+                df[field] = df[field].astype(target_schema[field])
         return df
 
     @staticmethod
