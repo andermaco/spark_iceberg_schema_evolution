@@ -6,6 +6,7 @@ from pyspark.storagelevel import StorageLevel
 from functools import reduce
 import os
 from pathlib import Path
+from pyspark.sql.types import TimestampType
 
 
 if __name__ == "__main__":
@@ -59,10 +60,6 @@ if __name__ == "__main__":
         # Reduce and union all source/received DataFrames
         df_csv_union = reduce(lambda df1, df2: df1.unionByName(
             df2, allowMissingColumns=True), aligned_dfs)
-
-        # # Rename columns: lowercase and remove spaces, due to avoid issues with Glue
-        # df_csv_union = df_csv_union.toDF(
-        #     *[col.lower().replace(" ", "_") for col in df_csv_union.columns])
         
         # Rename columns: lowercase, remove spaces and special characters for Glue/Iceberg compatibility
         df_csv_union = df_csv_union.toDF(
@@ -82,42 +79,46 @@ if __name__ == "__main__":
         df_csv_union = df_csv_union.select(columns)
         
         # Getting string and boolean columns to apply coalesce to them (replacing null with a default value)
-        string_cols = [col for col,dtype in df_csv_union.dtypes if dtype == "string"]
-        boolean_cols = [col for col,dtype in df_csv_union.dtypes if dtype == "boolean"]        
+        string_cols = [col for col,dtype in df_csv_union.dtypes if dtype == "string"]        
+        numeric_cols = [field.name for field in df_csv_union.schema.fields if field.dataType.simpleString() in ["int", "double", "float", "bigint"]]
+        boolean_cols = [col for col,dtype in df_csv_union.dtypes if dtype == "boolean"]   
+        date_cols = [col for col,dtype in df_csv_union.dtypes if dtype == "date"]
+        
         ## Apply coalesce to all string columns (replacing null with a default value)
         df_csv_union = df_csv_union.select([
             coalesce(df_csv_union[col], lit("Unknown")).alias(col) if col in string_cols else df_csv_union[col].alias(col)
             for col in df_csv_union.columns
-        ])
-        ## Apply coalesce to all boolean columns (replacing null with a default 0 value)
-        df_csv_union = df_csv_union.select(
-            [coalesce(df_csv_union[col], lit(False)).alias(col) if col in boolean_cols else df_csv_union[col] 
-            for col in df_csv_union.columns])
+        ])        
+        # Apply fillna to all numeric columns (replacing null with a default value)
+        df_csv_union = df_csv_union.fillna(0, subset=numeric_cols)        
+        
+        # ## Apply coalesce to all boolean columns (replacing null with a default 0 value)
+        # df_csv_union = df_csv_union.select(
+        #     [coalesce(df_csv_union[col], lit(False)).alias(col) if col in boolean_cols else df_csv_union[col] 
+        #     for col in df_csv_union.columns])
+        
+        ## Change date columns to timestamp due to incopatibility issues with AWS Athena
+        for col in date_cols:
+            df_csv_union = df_csv_union.withColumn(col, to_timestamp(col))
         
         ########################################################
         # Read glue table to cast df source -> df target types #
         ########################################################
 
-        # Get glue table schema
-        schema_aws_glue, df_aws_glue = Utils.get_glue_iceberg_schema(
-            spark, aws_config.glue_database, aws_config.glue_table)
+        # # Get glue table schema
+        # schema_aws_glue, df_aws_glue = Utils.get_glue_iceberg_schema(
+        #     spark, aws_config.glue_database, aws_config.glue_table)
 
-        # Cast common columns to schema_aws_glue columns types
-        if schema_aws_glue and df_aws_glue is not None:
-            df_csv_union = Utils.align_column_types(
-                df_csv_union, schema_aws_glue)
+        # # Cast common columns to schema_aws_glue columns types
+        # if schema_aws_glue and df_aws_glue is not None:
+        #     df_csv_union = Utils.align_column_types(
+        #         df_csv_union, schema_aws_glue)
 
         # Persist the DataFrame at disc in order to save memory and avoid multiple reads JUST for development purposes
         df_csv_union.persist(StorageLevel.DISK_ONLY)
-
-        # Partition columns are just set when table is created
-        partition_cols = None if schema_aws_glue and df_aws_glue else [
-            "month(created_at)"]
-
-
-
+        
         # Write the final DataFrame
-        Utils.write_to_s3_glue(df_csv_union, aws_config, partition_cols)
+        Utils.write_to_s3_glue(df_csv_union, aws_config)
 
     except Exception as e:
         print(e)

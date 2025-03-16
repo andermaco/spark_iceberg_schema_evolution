@@ -8,6 +8,7 @@ from pyspark.sql.types import TimestampType
 from src.config.settings import AWSConfig
 import awswrangler as wr
 import boto3
+import pandas as pd
 
 
 @dataclass
@@ -85,7 +86,6 @@ class Utils():
             if target_field.name == "newsletter_subscription":
                 print("lk")
             
-            
             if target_field.name in new_df.columns:
                 # If the column exists in the new DataFrame, use its existing type
                 aligned_fields.append(new_df[target_field.name].cast(
@@ -101,15 +101,73 @@ class Utils():
                 aligned_fields.append(new_df[new_field.name])
 
         return new_df.select(*aligned_fields)
+    
+    
+        # Mapping Athena/Glue data types to Pandas data types
+    ATHENA_TO_PANDAS_TYPES = {
+        "int": "Int64",
+        "integer": "Int64",
+        "bigint": "Int64",
+        "smallint": "Int64",
+        "tinyint": "Int64",
+        "double": "float64",
+        "float": "float64",
+        "decimal": "float64",
+        "string": "string",
+        "char": "string",
+        "varchar": "string",
+        "boolean": "bool",
+        "timestamp": "datetime64[ns]",
+        "date": "datetime64[ns]",
+        "binary": "bytes",
+    }
+
+    def get_athena_table_schema(aws_session: boto3.Session, database_name: str, table_name: str):
+        """Fetch schema of an Athena Iceberg table from AWS Glue and convert to Pandas-compatible types."""
+        try:
+            response = aws_session.client("glue").get_table(DatabaseName=database_name, Name=table_name)
+            columns = response["Table"]["StorageDescriptor"]["Columns"]
+
+            schema = {
+                col["Name"]: Utils.ATHENA_TO_PANDAS_TYPES.get(col["Type"], "object")  # Default to object if type is unknown
+                for col in columns
+            }
+            return schema
+        except Exception as e:
+            print(f"Error getting schema: {e}")
+            return None
+        
+    @staticmethod
+    def align_pandas_column_types(df: pd.DataFrame, target_schema: dict) -> pd.DataFrame:
+        """
+        Aligns column types to match target schema.
+        Args:
+            df: The Pandas DataFrame to align.
+            target_schema: The target schema.
+        Returns:
+            A new Pandas DataFrame with the aligned column types.
+        """
+        for key in target_schema.keys():
+            print(key)
+            if key in df.columns:
+                df[key] = df[key].astype(target_schema[key])
+        return df
+    
+    
+    # NO SOLO APLICAR ASTYPE AL DATAFRAME A INSERTAR, TAMBIÉN 
+    
+    
+    
+    
+    
 
     @staticmethod
-    def write_to_s3_glue(df: DataFrame, aws_config: AWSConfig, partition_cols: list) -> None:
+    def write_to_s3_glue(df: DataFrame, aws_config: AWSConfig) -> None:
         """
         Write DataFrame to S3 and create/update Glue catalog table using specified IAM role
         Args:
             df: The DataFrame to write.
-            aws_config: The AWS configuration.
-            partition_cols: The partition columns.
+            aws_config: The AWS configuration.            
         """
         # Create session with role assumption
         sts_client = boto3.client('sts')
@@ -127,6 +185,23 @@ class Utils():
 
         # Convert to pandas and handle schema evolution
         pandas_df = df.toPandas()
+        pandas_df["month_created_at"] = pandas_df["created_at"].dt.month
+        partition_cols = ["month_created_at"]
+        
+        # print(pandas_df.dtypes)        
+        # schema = Utils.get_athena_table_schema(boto3_session, aws_config.glue_database, aws_config.glue_table)
+        # print(schema)            
+        # pandas_df = Utils.align_pandas_column_types(pandas_df, schema)
+        # print(pandas_df.dtypes)
+               
+        
+        # """
+        # PySpark creates a timestamp column, but when this DataFrame is converted to a pandas DataFrame later in your code (before passing to AWS Wrangler), 
+        # the timestamp column is converted to a pandas datetime column. The issue is that pandas requires a precision to be specified for datetime64 
+        # columns (like 'datetime64[ns]'), but the conversion from PySpark to pandas might be creating a generic 'datetime64' type without the required precision.
+        # """
+        # pandas_df['created_at'] = pandas_df['created_at'].astype('datetime64[ns]')
+
 
         # Write to table using awswrangler
         wr.athena.to_iceberg(
@@ -138,6 +213,7 @@ class Utils():
             workgroup=aws_config.workgroup,
             schema_evolution=True,
             keep_files=False,
+            # mode="overwrite_partitions",
             fill_missing_columns_in_df=True,
             partition_cols=partition_cols
         )
@@ -215,7 +291,7 @@ class Utils():
             return None, None  # Return None if the table doesn't exist or there's an error
 
     @staticmethod
-    def align_column_types(df: DataFrame, target_schema: StructType) -> DataFrame:
+    def align_dataframe_column_types(df: DataFrame, target_schema: StructType) -> DataFrame:
         """
         Aligns column types to match target schema.
         Args:
