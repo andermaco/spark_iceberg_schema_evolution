@@ -28,20 +28,20 @@ if __name__ == "__main__":
     # for i in range(16, 21):
     #     print(f"processingdata/raw/customers-{i}.csv")
     #     csv_list.append(f"data/raw/customers-{i}.csv")
-        
+
     # Create data/raw directory if it doesn't exist
     raw_dir = Path("data/raw")
     raw_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Get all CSV files in the data/raw directory
     for f in raw_dir.glob("*.csv"):
         csv_list.append(str(f))
     if csv_list == []:
         raise ValueError("No CSV files found in the data/raw directory")
-    
+
     df_csv_union = None
-    
-    try:      
+
+    try:
         #########################################
         # Read sorce CSV files and process them #
         #########################################
@@ -60,15 +60,15 @@ if __name__ == "__main__":
         # Reduce and union all source/received DataFrames
         df_csv_union = reduce(lambda df1, df2: df1.unionByName(
             df2, allowMissingColumns=True), aligned_dfs)
-        
+
         # Rename columns: lowercase, remove spaces and special characters for Glue/Iceberg compatibility
         df_csv_union = df_csv_union.toDF(
             *[col.lower()
-            .replace(" ", "_")
-            .replace("-", "_")
-            .replace("(", "")
-            .replace(")", "")
-            for col in df_csv_union.columns]
+              .replace(" ", "_")
+              .replace("-", "_")
+              .replace("(", "")
+              .replace(")", "")
+              for col in df_csv_union.columns]
         )
 
         # Add created_at timestamp and reorder columns
@@ -77,30 +77,35 @@ if __name__ == "__main__":
         columns = ["created_at"] + \
             [col for col in df_csv_union.columns if col != "created_at"]
         df_csv_union = df_csv_union.select(columns)
-        
+
         # Getting string and boolean columns to apply coalesce to them (replacing null with a default value)
-        string_cols = [col for col,dtype in df_csv_union.dtypes if dtype == "string"]        
-        numeric_cols = [field.name for field in df_csv_union.schema.fields if field.dataType.simpleString() in ["int", "double", "float", "bigint"]]
-        boolean_cols = [col for col,dtype in df_csv_union.dtypes if dtype == "boolean"]   
-        date_cols = [col for col,dtype in df_csv_union.dtypes if dtype == "date"]
-        
-        ## Apply coalesce to all string columns (replacing null with a default value)
+        string_cols = [col for col,
+                       dtype in df_csv_union.dtypes if dtype == "string"]
+        numeric_cols = [field.name for field in df_csv_union.schema.fields if field.dataType.simpleString() in [
+            "int", "double", "float", "bigint"]]
+        boolean_cols = [col for col,
+                        dtype in df_csv_union.dtypes if dtype == "boolean"]
+        date_cols = [col for col,
+                     dtype in df_csv_union.dtypes if dtype == "date"]
+
+        # Apply coalesce to all string columns (replacing null with a default value)
         df_csv_union = df_csv_union.select([
-            coalesce(df_csv_union[col], lit("Unknown")).alias(col) if col in string_cols else df_csv_union[col].alias(col)
+            coalesce(df_csv_union[col], lit("Unknown")).alias(
+                col) if col in string_cols else df_csv_union[col].alias(col)
             for col in df_csv_union.columns
-        ])        
+        ])
         # Apply fillna to all numeric columns (replacing null with a default value)
-        df_csv_union = df_csv_union.fillna(0, subset=numeric_cols)        
-        
+        df_csv_union = df_csv_union.fillna(0, subset=numeric_cols)
+
         # ## Apply coalesce to all boolean columns (replacing null with a default 0 value)
         # df_csv_union = df_csv_union.select(
-        #     [coalesce(df_csv_union[col], lit(False)).alias(col) if col in boolean_cols else df_csv_union[col] 
+        #     [coalesce(df_csv_union[col], lit(False)).alias(col) if col in boolean_cols else df_csv_union[col]
         #     for col in df_csv_union.columns])
-        
-        ## Change date columns to timestamp due to incopatibility issues with AWS Athena
+
+        # Change date columns to timestamp due to incopatibility issues with AWS Athena
         for col in date_cols:
             df_csv_union = df_csv_union.withColumn(col, to_timestamp(col))
-        
+
         ########################################################
         # Read glue table to cast df source -> df target types #
         ########################################################
@@ -116,7 +121,7 @@ if __name__ == "__main__":
 
         # Persist the DataFrame at disc in order to save memory and avoid multiple reads JUST for development purposes
         df_csv_union.persist(StorageLevel.DISK_ONLY)
-        
+
         # Write the final DataFrame
         Utils.write_to_s3_glue(df_csv_union, aws_config)
 
