@@ -22,8 +22,9 @@ if __name__ == "__main__":
     # Iceberg table creation is done automatically in the Utils.configure_aws_glue_catalog function,
     # so we don't need to create it again here, but if you want to create it manually, 
     # you can use the following code:
-    ## Create Iceberg table
-    ## Utils.create_iceberg_table(spark, aws_config.glue_database, aws_config.glue_table, aws_config.s3_path, ["SubscriptionDate"])
+    
+    # Create Iceberg table
+    Utils.create_glue_iceberg_table(spark, aws_config.glue_database, aws_config.glue_table, aws_config.s3_path, ["month(created_at)"])
             
     # Create data/raw directory if it doesn't exist
     raw_dir = Path("data/raw")
