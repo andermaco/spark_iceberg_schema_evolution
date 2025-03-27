@@ -65,5 +65,10 @@ markers = [
     "integration: marks tests as integration tests",
 ]
 
+# This is to find the packages in the src directory
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"] 
+
 [project.urls]
-repository = "https://github.com/yourusername/schema_evolution" 
+repository = "https://github.com/yourusername/schema_evolution"

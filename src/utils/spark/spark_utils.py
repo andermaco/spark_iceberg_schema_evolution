@@ -8,10 +8,13 @@ from pyspark.sql.types import TimestampType
 from src.config.settings import AWSConfig
 import awswrangler as wr
 import boto3
+import pandas as pd
+from src.utils.spark.type_utils import TypeUtils
+
 
 
 @dataclass
-class Utils():
+class SparkUtils():
 
     @staticmethod
     def create_spark_session(app_name: str) -> SparkSession:
@@ -25,6 +28,15 @@ class Utils():
         return SparkSession.builder \
             .appName(app_name) \
             .getOrCreate()
+
+
+    @staticmethod
+    def get_boto3_session() -> boto3.Session:
+        """
+        Returns a boto3 session with temporary credentials.
+        """
+        return boto3.Session()
+
 
     @staticmethod
     def configure_aws_glue_catalog(spark: SparkSession) -> None:
@@ -42,28 +54,29 @@ class Utils():
         spark.conf.set("spark.sql.catalog.AwsGlueCatalog.io-impl",
                        "org.apache.iceberg.aws.s3.S3FileIO")
         spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
+        
 
-    @staticmethod
-    def compare_schemas(schema1: StructType, schema2: StructType) -> Tuple[Set[str], Set[str], Dict[str, Tuple[DataType, DataType]]]:
-        """
-        Compara dos esquemas y devuelve:
-        - Conjunto de campos que faltan en schema1 respecto a schema2.
-        - Conjunto de campos que faltan en schema2 respecto a schema1.
-        - Diferencias de tipos para campos comunes.
-        """
-        fields1 = {f.name: f.dataType for f in schema1.fields}
-        fields2 = {f.name: f.dataType for f in schema2.fields}
+    # @staticmethod
+    # def compare_schemas(schema1: StructType, schema2: StructType) -> Tuple[Set[str], Set[str], Dict[str, Tuple[DataType, DataType]]]:
+    #     """
+    #     Compara dos esquemas y devuelve:
+    #     - Conjunto de campos que faltan en schema1 respecto a schema2.
+    #     - Conjunto de campos que faltan en schema2 respecto a schema1.
+    #     - Diferencias de tipos para campos comunes.
+    #     """
+    #     fields1 = {f.name: f.dataType for f in schema1.fields}
+    #     fields2 = {f.name: f.dataType for f in schema2.fields}
 
-        missing_in_1 = set(fields2.keys()) - set(fields1.keys())
-        missing_in_2 = set(fields1.keys()) - set(fields2.keys())
+    #     missing_in_1 = set(fields2.keys()) - set(fields1.keys())
+    #     missing_in_2 = set(fields1.keys()) - set(fields2.keys())
 
-        diff_types = {
-            name: (fields1[name], fields2[name])
-            for name in set(fields1.keys()) & set(fields2.keys())
-            if fields1[name] != fields2[name]
-        }
+    #     diff_types = {
+    #         name: (fields1[name], fields2[name])
+    #         for name in set(fields1.keys()) & set(fields2.keys())
+    #         if fields1[name] != fields2[name]
+    #     }
 
-        return missing_in_1, missing_in_2, diff_types
+    #     return missing_in_1, missing_in_2, diff_types
 
     @staticmethod
     def align_schema(new_df: DataFrame, target_schema: StructType) -> DataFrame:
@@ -98,28 +111,14 @@ class Utils():
         return new_df.select(*aligned_fields)
 
     @staticmethod
-    def write_to_s3_glue(df: DataFrame, aws_config: AWSConfig, partition_cols: list) -> None:
+    def write_to_s3_glue(df: pd.DataFrame, aws_config: AWSConfig, partition_cols: list, schema_dict: dict = None) -> None:
         """
         Write DataFrame to S3 and create/update Glue catalog table using specified IAM role
         Args:
-            df: The DataFrame to write.
+            df: The PandasDataFrame to write.
             aws_config: The AWS configuration.
             partition_cols: The partition columns.
         """
-        # Create session with role assumption
-        sts_client = boto3.client('sts')
-        assumed_role = sts_client.assume_role(
-            RoleArn=aws_config.iam_role,
-            RoleSessionName='WriteToS3GlueSession'
-        )
-
-        # Create boto3 session with temporary credentials
-        boto3_session = boto3.Session(
-            aws_access_key_id=assumed_role['Credentials']['AccessKeyId'],
-            aws_secret_access_key=assumed_role['Credentials']['SecretAccessKey'],
-            aws_session_token=assumed_role['Credentials']['SessionToken']
-        )
-
         # Convert to pandas and handle schema evolution
         pandas_df = df.toPandas()
 
@@ -131,31 +130,13 @@ class Utils():
             temp_path="s3://bd-test-tq-wg/temp/",
             table_location="s3://bd-datawarehouse/customers_db/customers_table/",
             workgroup=aws_config.workgroup,
+            catalog_id=AWSConfig().catalog_id,
             schema_evolution=True,
             keep_files=False,
             fill_missing_columns_in_df=True,
-            partition_cols=partition_cols
+            partition_cols=partition_cols,
+            dtype=schema_dict
         )
-
-    @staticmethod
-    def convert_datetime_columns(df: DataFrame) -> DataFrame:
-        """
-        Converts datetime columns to TimestampType.
-        Args:
-            df: The DataFrame to convert.
-        Returns:
-            A new DataFrame with the converted datetime columns.
-        """
-        for col_name, data_type in df.dtypes:
-            if "date" in data_type.lower():  # Check for date or timestamp
-                df = df.withColumn(
-                    col_name, df[col_name].cast(TimestampType()))
-
-        print(df.dtypes)
-        print(df['SubscriptionDate'].dtype)
-
-        return df
-
 
     @staticmethod
     def create_glue_database(spark: SparkSession, database_name: str, bucket_path: str):
@@ -183,15 +164,15 @@ class Utils():
             TBLPROPERTIES (
                 'table_type' = 'ICEBERG',
                 'format'='parquet',        
-                'write_compression'='ZSTD',        
+                'write_compression'='ZSTD',
                 'optimize_rewrite_data_file_threshold'='5',
                 'optimize_rewrite_delete_file_threshold'='2',
                 'vacuum_min_snapshots_to_keep'='5'
             )
         """)
-
+        
     @staticmethod
-    def get_glue_iceberg_schema(spark: SparkSession, glue_db: str, glue_table: str) -> Tuple[StructType, DataFrame]:
+    def get_glue_iceberg_schema(spark: SparkSession, glue_db: str, glue_table: str) -> StructType:
         """
         Retrieves the schema and DataFrame of an Iceberg table from AWS Glue Catalog.
         Args:
@@ -204,48 +185,58 @@ class Utils():
         try:
             df = spark.read.format("iceberg").load(
                 f"AwsGlueCatalog.{glue_db}.{glue_table}")
-            return df.schema, df
+            return df.schema
         except Exception as e:
             print(f"Error retrieving schema: {e}")
-            return None, None  # Return None if the table doesn't exist or there's an error
-
+            return None  # Return None if the table doesn't exist or there's an error
+    
     @staticmethod
-    def align_column_types(df: DataFrame, target_schema: StructType) -> DataFrame:
+    def ensure_schema_types_match(df: DataFrame, database: str, table: str) -> DataFrame:
         """
-        Aligns column types to match target schema.
-        Args:
-            df: The DataFrame to align.
-            target_schema: The target schema.
-        Returns:
-            A new DataFrame with the aligned column types.
+        Ensures the schema of a DataFrame matches a target schema.
         """
-        for field in target_schema.fields:
-            if field.name in df.columns:
+        iceberg_schema = SparkUtils.get_iceberg_schema(database, table)
+        if iceberg_schema is None:
+            return df
+        # Ensure DataFrame matches the schema     
+        for field in df.columns:
+            if field in iceberg_schema.keys():
                 df = df.withColumn(
-                    field.name, df[field.name].cast(field.dataType))
+                    field, df[field].cast(iceberg_schema[field]))
+            else:                
+                df = df.withColumn(
+                    field, lit(df[field]).cast(TypeUtils().datatype_to_str(df.schema[field].dataType)))
         return df
-
+    
     @staticmethod
-    def normalize_numeric_col_to_str(df: DataFrame) -> DataFrame:
+    def ensure_iceberg_schema_order_and_types(df: DataFrame, schema: StructType) -> DataFrame:
         """
-        Normalizes all double, long, and int columns in a PySpark DataFrame to int.
-        Args:
-            df (pyspark.sql.DataFrame): The input DataFrame.
-        Returns:
-            pyspark.sql.DataFrame: The DataFrame with normalized integer columns.
+        Ensures the order of columns in a DataFrame matches a target schema.
+        Adds missing columns as null values if they are not present in the DataFrame.
+        
+        :param df: Input DataFrame
+        :param schema: Target schema (StructType) to enforce
+        :return: DataFrame with ordered columns matching the schema
         """
-        numeric_dtypes = [
-            'byte',
-            'short',
-            'int',
-            'long',
-            'float',
-            'double',
-            'decimal',  # Note: 'decimal' without precision/scale
-        ]
-
-        for col_name, data_type in df.dtypes:
-            # if data_type in ("double", "long", "int"):
-            if data_type in numeric_dtypes or any(data_type.startswith(numeric_dtype) for numeric_dtype in numeric_dtypes):
-                df = df.withColumn(col_name, df[col_name].cast(StringType()))
-        return df
+        # Extract existing columns from the DataFrame avoiding duplicates
+        df_columns = set(df.columns)
+                        
+        # Ensure all schema columns exist in the DataFrame, adding missing ones as nulls
+        for field in schema:
+            if field.name not in df_columns:
+                df = df.withColumn(field.name, lit(None).cast(field.dataType))
+                        
+        # Get those columns not in the schema
+        missing_columns = df_columns - set(schema.fieldNames())
+ 
+        # Reorder DataFrame to match schema
+        # return df.select([field.name for field in schema])
+        return df.select([field.name for field in schema] + [df[col] for col in missing_columns])
+    
+    @staticmethod
+    def get_iceberg_schema(database: str, table: str) -> dict:
+        """
+        Retrieves the schema of an Iceberg table from AWS Glue Catalog.
+        """
+        return wr.catalog.get_table_types(database=database, table=table)
+    

@@ -1,5 +1,5 @@
 import pytest
-from src.utils.spark_utils import Utils
+from src.utils.spark.spark_utils import SparkUtils
 from pyspark.sql.types import StructType, StructField, StringType
 
 
@@ -26,5 +26,5 @@ def test_end_to_end_flow(spark):
     
     # Test schema alignment
     target_schema = df.schema
-    aligned_df = Utils.align_schema(df, target_schema)
+    aligned_df = SparkUtils.align_schema(df, target_schema)
     assert aligned_df.count() == 2

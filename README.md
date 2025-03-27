@@ -74,8 +74,13 @@ The application processes CSV files containing customer data, handles schema evo
 
 3. Install the package in development mode with dev dependencies:
     ```bash
-    pip install -e ".[dev]"
+    pip install -e ".[dev]" 
     ```
+    or
+    ```bash
+    pip install -e . 
+    ```
+    depending on your goal
 
 4. I'm using a launch.json file for running or debugging the job in VSCode. Configure AWS credentials and settings in `.vscode/launch.json`:
 
@@ -128,6 +133,14 @@ The application processes CSV files containing customer data, handles schema evo
             ...
     }
     ```
+5. Download required libraries at "deploy/" directory. Just exec:
+    ```bash
+    ./sh/download_libs.sh 
+    ```
+    The following libs will be downloaded:
+    - bundle-2.17.161.jar
+    - iceberg-spark-runtime-3.3_2.12-1.6.1.jar
+    - url-connection-client-2.17.161.jar
 
 
 ## Usage
