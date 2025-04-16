@@ -148,6 +148,7 @@ The application processes CSV files containing customer data, handles schema evo
 For testing purposes, you can generate fake data using the src/utils/fake_data.py script or use you own csv files:
 
 1. Place your CSV files in `data/raw/` directory, or **you can generate some example files using the src/utils/fake_data.py script**, you can use them to test the job, even you can add more files to the directory later on to test the schema evolution, take care, **the job will process all the files in the directory**.
+If "data/raw" directory does not exist previously, create it.
 
 
     - Generate files 1-20 (default)

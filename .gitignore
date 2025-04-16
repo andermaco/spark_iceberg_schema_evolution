@@ -61,7 +61,7 @@ logs/
 *.parquet
 *.csv
 *.json
-data/
+data/raw/*
 
 # OS generated files
 .DS_Store
