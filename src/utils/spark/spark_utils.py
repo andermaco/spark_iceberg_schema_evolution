@@ -135,7 +135,8 @@ class SparkUtils():
             keep_files=False,
             fill_missing_columns_in_df=True,
             partition_cols=partition_cols,
-            dtype=schema_dict
+            dtype=schema_dict,
+            boto3_session=AWSConfig().session
         )
 
     @staticmethod
@@ -238,5 +239,5 @@ class SparkUtils():
         """
         Retrieves the schema of an Iceberg table from AWS Glue Catalog.
         """
-        return wr.catalog.get_table_types(database=database, table=table)
+        return wr.catalog.get_table_types(database=database, table=table, boto3_session=AWSConfig().session)
     

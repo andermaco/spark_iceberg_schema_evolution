@@ -1,5 +1,7 @@
 import os
+import boto3
 from dataclasses import dataclass
+from typing import Optional
 
 def singleton(class_):
     instances = {}
@@ -18,15 +20,35 @@ def singleton(class_):
 @singleton
 class AWSConfig:
     """AWS configuration settings."""
-    print(os.environ.get("AWS_S3_PATH"))
-    _s3_path: str = os.getenv("AWS_S3_PATH")
-    _glue_database: str = os.getenv("GLUE_DATABASE")
-    _glue_table: str = os.getenv("GLUE_TABLE")
-    _iam_role: str = os.getenv("AWS_IAM_ROLE")
-    _workgroup: str = os.getenv("WORKGROUP")
-    _workgroup_s3_path: str = os.getenv("WORKGROUP_S3_PATH")
-    _region: str = os.getenv("AWS_REGION")
-    _catalog_id: str = os.getenv("AWS_CATALOG_ID")
+
+    def __init__(self):
+        self._s3_path: str = os.getenv("AWS_S3_PATH")
+        self._glue_database: str = os.getenv("GLUE_DATABASE")
+        self._glue_table: str = os.getenv("GLUE_TABLE")
+        self._iam_role: str = os.getenv("AWS_IAM_ROLE")
+        self._workgroup: str = os.getenv("WORKGROUP")
+        self._workgroup_s3_path: str = os.getenv("WORKGROUP_S3_PATH")
+        self._region: str = os.getenv("AWS_REGION", "us-east-1")  # Default region
+        self._catalog_id: str = os.getenv("AWS_CATALOG_ID")
+        
+        # Initialize boto3 session
+        self._session: Optional[boto3.Session] = None
+        self._init_boto3_session()
+        
+        # self.validate()
+    
+    def _init_boto3_session(self) -> None:
+        """Initialize boto3 session with credentials."""
+        try:
+            self._session = boto3.Session(
+                region_name=self._region
+            )
+            # Test the session by getting caller identity
+            sts = self._session.client('sts')
+            sts.get_caller_identity()
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize AWS session: {str(e)}")
+
     
     def __post_init__(self):
         self.validate()
@@ -37,7 +59,7 @@ class AWSConfig:
         """
         missing = [
             field for field, value in self.__dict__.items()
-            if value is None or value == ""
+            if value is None or value == "" and not field.startswith('_')
         ]
         if missing:
             raise ValueError(
@@ -107,6 +129,10 @@ class AWSConfig:
     @catalog_id.setter
     def catalog_id(self, value):
         self._catalog_id = value
+
+    @property
+    def session(self) -> boto3.Session:
+        return self._session
 
 # # Usage example:
 # def example_usage():
